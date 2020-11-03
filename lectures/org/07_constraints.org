@@ -1,0 +1,724 @@
+#+STARTUP: showall
+#+STARTUP: lognotestate
+#+TAGS: research(r) uvic(u) today(y) todo(t) cooking(c)
+#+SEQ_TODO: TODO(t) STARTED(s) DEFERRED(r) CANCELLED(c) | WAITING(w) DELEGATED(d) APPT(a) DONE(d)
+#+DRAWERS: HIDDEN STATE
+#+ARCHIVE: %s_done::
+#+TITLE: 
+#+CATEGORY: 
+#+PROPERTY: header-args:sql             :engine postgresql  :exports both :cmdline csc370
+#+PROPERTY: header-args:sqlite          :db /path/to/db  :colnames yes
+#+PROPERTY: header-args:C++             :results output :flags -std=c++17 -Wall --pedantic -Werror
+#+PROPERTY: header-args:R               :results output  :colnames yes
+#+OPTIONS: ^:nil
+
+
+
+
+* Constraints and Triggers
+
+Sections 7.1 to 7.4
+
+
+
+
+* Data integrity
+
+- the DBMS is responsible for guaranteeing consistency of the data in
+  the DB
+- but we need to specify what the consistency constraints are
+
+Examples:
+
+- Before a student registers to a class (add a tuple to
+  relation Enrolled), student must exist in relation Students
+
+- Each student must have a different netlink-id
+
+- What is the primary key of a given relation
+
+- A default value for an attribute if none is provided
+
+- A student cannot register to more than 5 courses
+
+Note that these constraints are specific to the "customer"
+
+* Integrity constraints 
+
+- Integrity constraints are a feature of the DBMS that help guarantee
+  the integrity of the database (from an application point of view)
+
+  - Primary keys
+  - a given attribute cannot be NULL
+  - a given attribute is UNIQUE in the relation
+  - default values
+  - check that the value of an attribute satisfies a given constraint
+  - Foreign key constraints
+
+* Type of constraints
+
+- Table constraints: 
+  -checked every time a table is modified:
+    - tuple is inserted, updated or deleted
+
+- database constraints: 
+  - apply to the entire database
+  - check any time *any* tuple is inserted, updated or deleted
+
+* end
+
+
+* Table constraints
+
+- Usually specified in the *create table* statement
+- *Attribute constraints*: the constraint references only one attribute
+- specified at the declaration of the attribute
+    
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT,--constraint can go here,
+    sname TEXT,
+    birthday DATE
+);
+#+end_src
+
+- *Tuple constraints*: the constraint references one or more attributes
+- specified after the attributes have been declared
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT,
+    sname TEXT,
+    birthday DATE,
+    -- tuple constraints go here
+);
+#+end_src
+
+
+* Different table constraints
+
+- not null
+- unique
+- primary key
+- foreign key
+
+* not null
+
+- A given attribute cannot have a NULL value
+
+Usually added as an attribute constraint
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT NOT NULL,
+    sname TEXT,
+    birthday DATE
+);
+#+end_src
+
+* unique
+
+- Attribute or set of attributes are unique
+- *Only verified if the attribute(s) is not NULL*
+
+as an attribute constraint:
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT UNIQUE,
+    sname TEXT,
+    birthday DATE
+);
+#+end_src
+
+as a tuple constraint:
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT ,
+    sname TEXT,
+    birthday DATE,
+    UNIQUE(sid)
+);
+#+end_src
+
+#+begin_src sql
+CREATE TABLE Example2(
+    sid TEXT ,
+    sname TEXT,
+    birthday DATE,
+    UNIQUE(sid,sname)
+);
+#+end_src
+
+('s01', 'bob', NULL) 
+('s01', 'bill', NULL) 
+('s01', 'bill', 4) <- rejected
+('s01', 'bob', 5) <- rejected
+
+This is different than:
+
+#+begin_src sql
+CREATE TABLE Example2(
+    sid TEXT UNIQUE,
+    sname TEXT UNIQUE,
+    birthday DATE,
+);
+#+end_src
+
+('s01', 'bob', NULL) 
+('s01', 'bill', NULL) <- rejected
+                         because s01 is UNIQUE
+('s02', 'bob', 3)  <- rejected
+                      because bob is UNIQUE
+
+
+
+
+
+* primary key 
+
+as attribute constraint
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT PRIMARY KEY,
+    sname TEXT,
+    birthday DATE
+);
+#+end_src
+
+as a tuple constraint:
+
+#+begin_src sql
+CREATE TABLE Students(
+    sid TEXT ,
+    sname TEXT,
+    birthday DATE,
+    PRIMARY KEY(sid)
+);
+#+end_src
+
+#+begin_src sql
+CREATE TABLE Example2(
+    sid TEXT,
+    sname TEXT,
+    birthday DATE,
+    PRIMARY KEY(sid,sname)
+);
+#+end_src
+
+* primary key
+
+A primary key (*list*) constraint implies that 
+
+- every attribute in *list* key is NOT NULL
+- list is declared UNIQUE
+
+#+begin_src sql :results value verbatim
+DROP TABLE IF EXISTS  Example2;
+CREATE TABLE Example2(
+    sid TEXT ,
+    sname TEXT,
+    birthday DATE,
+    PRIMARY KEY(sid,sname)
+);
+#+end_src
+
+
+is equivalent to:
+
+#+begin_src sql
+CREATE TABLE Example2(
+    sid TEXT NOT NULL,
+    sname TEXT NOT NULL,
+    birthday DATE,
+    PRIMARY KEY(sid,sname),
+    UNIQUE(sid, sname)
+);
+#+end_src
+
+
+* Primary key...
+
+If the key is only one attribute, it can be done as an attribute constraint:
+
+#+begin_src sql
+DROP TABLE IF EXISTS Students;
+CREATE TABLE Students(
+    sid TEXT PRIMARY KEY,
+    sname TEXT,
+    birthday DATE
+);
+#+end_src
+
+
+
+* Foreign key constraints
+
+- Makes sure that a value in an attribute (or set of attributes)
+  exists in another relation.
+
+#+begin_src sql
+CREATE TABLE Enrolled(
+    theSid TEXT,
+    theCid TEXT,
+    grade int,
+    PRIMARY KEY (theSid, theCid),
+    FOREIGN KEY (theSid) REFERENCES students,
+    FOREIGN KEY (theCid) REFERENCES courses
+);
+#+end_src
+
+By default, a FOREIGN KEY field references the PK of the relation
+begin referenced
+
+
+* Foreign key constraints...
+
+- they can reference any attribute (or set of attributes) as long as
+  it (they) are defined UNIQUE in the referenced relation
+
+#+begin_src sql
+CREATE TABLE Table3(
+    theKey TEXT PRIMARY KEY,
+    a TEXT,
+    b TEXT,
+    UNIQUE(a,b)
+);
+
+CREATE TABLE Table4(
+    c TEXT,
+    d TEXT,
+    PRIMARY KEY (c, d),
+    FOREIGN KEY (c, d) REFERENCES Table3(a,b)
+);
+#+end_src
+
+* end
+
+
+
+
+* What if the Foreign Key  changes in the referenced relation?
+
+Assume:
+
+#+begin_src sql
+CREATE TABLE Enrolled(
+    sid TEXT,
+    cid TEXT,
+    grade int,
+    PRIMARY KEY (sid, cid),
+    FOREIGN KEY (sid) REFERENCES Students,
+    FOREIGN KEY (cid) REFERENCES Courses
+);
+#+end_src
+
+- What if a student is deleted from Students?
+  - and that student has tuples in Enrolled?
+
+* On DELETE: 
+
+- 4 options
+   - *CASCADE*: 
+      if student deleted from Students, delete it from Enrolled
+
+   - *RESTRICT*:
+      if student exists in Enrolled, do not allow delete in Students
+
+   - *SET NULL*:
+     set the sid in Enrolled to NULL (if Enrolled allows it)
+
+   - *SET DEFAULT*:
+     set the sid in Enrolled to a default value
+
+Note that if a tuple in Enrolled is modified due to a *FOREIGN KEY*
+constraint, then the *updated tuple* must satisfy *all* the constraints of
+Enrolled
+
+#+begin_src sql
+CREATE TABLE Enrolled(
+    sd TEXT,
+    sid TEXT,
+    grade int,
+    PRIMARY KEY (sid, cid),
+    FOREIGN KEY (sid) REFERENCES Students
+      ON DELETE CASCADE,
+    FOREIGN KEY (cid) REFERENCES Courses
+);
+#+end_src
+
+* ON update
+
+- What if a student field referenced in Enrolled is updated in the relations Students?
+
+- 2 options
+   - *CASCADE*: 
+      if student sid is changed Students, update it in Enrolled
+
+   - *RESTRICT*:
+      if student sid exists in Enrolled, do not allow the update
+
+#+begin_src sql
+CREATE TABLE Enrolled(
+    sid TEXT,
+    cid TEXT,
+    grade int,
+    PRIMARY KEY (sid, cid),
+    FOREIGN KEY (sid) REFERENCES Students
+      ON DELETE RESTRICT
+      ON UPDATE CASCADE,
+    FOREIGN KEY (cid) REFERENCES Courses
+);
+#+end_src
+
+#+RESULTS:
+|   |
+
+#+begin_src sql
+delete from enrolled;
+delete from courses;
+delete from students;
+insert into courses (cid, cname) values ('csc370', 'databases');
+insert into students (sid, sname) values ('s001', 'Sean Connery');
+insert into enrolled(sid, cid) values ('s001', 'csc370');
+#+end_src
+
+#+RESULTS:
+| DELETE 0   |
+|------------|
+| DELETE 1   |
+| DELETE 0   |
+| INSERT 0 1 |
+| INSERT 0 1 |
+| INSERT 0 1 |
+
+Now we change students!!! (not enrolled)
+
+#+begin_src sql
+update students set sid = 's007' where sid = 's001';
+#+end_src
+
+But Enrolled *ALSO* changed:
+
+#+begin_src sql
+select * from enrolled;
+#+end_src
+
+#+RESULTS:
+| sid  | cid    | grade |
+|------+--------+-------|
+| s007 | csc370 |       |
+
+
+We can't delete student because we defined it as RESTRICT. 
+
+#+begin_src sql
+delete from students where sid = 's007'; -- this will fail
+#+end_src
+
+Note that once a relation references another on in a foreign key constraint, we can't drop it:
+
+#+begin_src sql
+DROP TABLE IF EXISTS Students; -- this will fail
+#+end_src
+
+We need to drop Enrolled first (or remove the constraint... more on that later)
+
+* end...
+
+* DEFAULT values for an attribute
+
+At insertion, when non specified, attributes are set to NULL
+
+Assume R(a,b,c)
+  
+#+begin_src sql
+  INSERT INTO R(b,c) VALUES (1,3), (2,4);
+  #+end_src
+
+inserts the tuples (NULL, 1, 3) and (NULL, 2, 4)
+
+We can change this behaviour:
+
+#+begin_src sql
+CREATE TABLE R(
+   a int DEFAULT 1,
+   b int DEFAULT 2,
+   c int PRIMARY KEY
+);
+insert into R(c) values (1),(2),(3); 
+insert into R(a,c) values (-1, -2);
+insert into R(a,b,c) values (0, 0, 0);
+#+end_src
+
+#+begin_src sql
+select * from R
+#+end_src
+
+#+RESULTS:
+|  a | b |  c |
+|----+---+----|
+|  1 | 2 |  1 |
+|  1 | 2 |  2 |
+|  1 | 2 |  3 |
+| -1 | 2 | -2 |
+|  0 | 0 |  0 |
+
+
+
+
+* CHECK
+
+We can have more advanced predicates verified 
+
+Operation (insert, update) on tuple succeeds  if predicate is true:
+
+- attribute checks:
+
+Predicate can be any SQL  predicate
+
+#+begin_src sql
+DROP TABLE IF EXISTS R;
+CREATE TABLE R(
+   year int CHECK (year > 2000),
+   year2 int,
+   gender CHAR(1) CHECK (gender in ('F', 'M')),
+   check (year + year2 <3000)
+);
+#+end_src
+
+
+These will fail:
+
+#+begin_src sql
+insert into R(year) values (100);
+#+end_src
+
+#+begin_example
+ERROR:  new row for relation "r" violates check constraint "r_year_check"
+DETAIL:  Failing row contains (100, null).
+#+end_example
+
+#+begin_src sql
+insert into R(gender) values ('d');
+#+end_src
+
+#+begin_example
+ERROR:  new row for relation "r" violates check constraint "r_gender_check"
+DETAIL:  Failing row contains (null, d).
+#+end_example
+
+#+begin_src sql
+insert into R(year, year2) values (2020, 2021);
+#+end_src
+
+#+begin_example
+ERROR:  new row for relation "r" violates check constraint "r_check"
+DETAIL:  Failing row contains (2020, 2021, null).
+#+end_example
+
+* using queries in check
+
+we can use a subquery, but *postgresql* does not support it
+
+(instead we have to use a database constraint)
+
+
+#+begin_src sql
+create table S(
+   a int primary key,
+   amount int
+);
+create table R (
+   a int,
+   b int,
+    -- this type of constraint is not supported by Postgresql
+   CHECK (b < (select sum(amount) from S where S.a = R.a))
+);
+
+#+end_src
+
+* end...
+
+* Altering/deleting constraints
+
+Every constraint has a name
+
+#+begin_src sql
+drop table if exists s;
+create table S(
+   a int primary key
+);
+
+create table R(
+   a int PRIMARY KEY,
+   b int NOT NULL CHECK(b > 10),
+   c int UNIQUE,
+   FOREIGN KEY (a) REFERENCES S
+     ON DELETE CASCADE
+     ON UPDATE CASCADE
+);
+#+end_src
+
+#+begin_src sql
+\d
+#+end_src
+
+#+begin_example
+                 Table "public.r"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null | 
+ b      | integer |           | not null | 
+ c      | integer |           |          | 
+Indexes:
+    "r_pkey" PRIMARY KEY, btree (a)
+    "r_c_key" UNIQUE CONSTRAINT, btree (c)
+Check constraints:
+    "r_b_check" CHECK (b > 10)
+Foreign-key constraints:
+    "r_a_fkey" FOREIGN KEY (a) REFERENCES s(a) ON UPDATE CASCADE ON DELETE CASCADE
+#+end_example
+
+the string prefixing the type of constraint is its name
+
+We can drop it as:
+
+#+begin_src sql
+ALTER TABLE R  -- name of relation
+  DROP CONSTRAINT r_b_check ;  -- name of constraint
+#+end_src
+
+and we can add at as:
+
+#+begin_src sql
+ALTER TABLE R  -- name of relation
+  ADD CHECK (b > 20);  -- name of constraint
+#+end_src
+
+
+* And we can give constraints specific names
+
+#+begin_src sql
+DROP TABLE IF EXISTS R;
+CREATE TABLE R(
+   a int CONSTRAINT mya PRIMARY KEY,
+   b int CONSTRAINT myb NOT NULL CONSTRAINT myb2 CHECK(b > 10),
+   c int CONSTRAINT myc UNIQUE,
+   CONSTRAINT myfk FOREIGN KEY (a) REFERENCES S
+     ON DELETE CASCADE
+     ON UPDATE CASCADE
+);
+#+end_src
+
+#+begin_example
+                 Table "public.r"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null | 
+ b      | integer |           | not null | 
+ c      | integer |           |          | 
+Indexes:
+    "mya" PRIMARY KEY, btree (a)
+    "myc" UNIQUE CONSTRAINT, btree (c)
+Check constraints:
+    "myb2" CHECK (b > 10)
+Foreign-key constraints:
+    "myfk" FOREIGN KEY (a) REFERENCES s(a) ON UPDATE CASCADE ON DELETE CASCADE
+#+end_example
+
+* end..
+
+* Database level: assertions
+
+Assertions are constraints at the database level.
+
+Every time tuples in the database are modified:
+
+But dangerous, since they can be _extremely_ expensive
+  - Not supported by postgres. 
+
+#+begin_src sql
+CREATE ASSERTION Atmost3tuples
+   CHECK (3 <= (select count(*) from R));
+#+end_src
+
+
+* Triggers
+
+Instead, create a "trigger".
+
+A trigger is an event that is executed in response to a specific action
+
+1) An event can be an insert, update or delete on a table 
+
+2) A trigger can be executed before, or after the operations
+
+   - it can do other operations in the DB (it can do almost anything)
+
+   - in can actually replace the desired operation 
+
+3) if a trigger "fails" the operation is aborted
+
+   - this feature can be used to create database-wide constraints
+
+*triggers can be used to verify almost any domain specific constraint*
+
+but they can slow down the DB performance
+
+
+* Triggers
+
+Example:
+
+https://stackoverflow.com/questions/22746741/trigger-for-checking-a-given-value-before-insert-or-update-on-postgresql
+
+Define a UDF:
+
+
+#+begin_src sql
+CREATE FUNCTION product_expiration_date()
+RETURNS trigger AS $BODY$
+BEGIN
+  IF new.expirationDate > CURRENT_TIMESTAMP THEN
+     RETURN NEW;
+  ELSE 
+    RAISE EXCEPTION 'Invalid expiration date';
+  END IF;
+END;
+$BODY$
+LANGUAGE 'plpgsql';
+#+end_src
+
+Create the trigger:
+
+#+begin_src sql
+CREATE TRIGGER verify_expiration_date 
+   BEFORE 
+     INSERT OR UPDATE 
+   ON Product 
+     FOR EACH ROW 
+       EXECUTE PROCEDURE product_expiration_date();
+#+end_src
+
+* end
+
+
+* other
+
+
+#+begin_src sql
+DROP TABLE IF exists courses;
+CREATE TABLE Courses(
+    cid TEXT PRIMARY KEY ,
+    cname TEXT
+);
+#+end_src
+
+#+RESULTS:
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
